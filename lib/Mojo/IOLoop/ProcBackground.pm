@@ -9,7 +9,6 @@ use Proc::Background;
 #
 
 use constant DEBUG => $ENV{MOJO_PROCBACKGROUND_DEBUG} || 0;
-use constant RECURRING_INTERVAL => $ENV{RECURRING_INTERVAL} || 0.01;
 
 our $VERSION = '0.01';
 
@@ -36,10 +35,14 @@ From Proc::Background:
 
     use Mojolicious::Lite;
 
+    use Mojo::IOLoop::ProcBackground;
+
     use File::Temp;
     use Proc::Background;
     use Fcntl qw(SEEK_SET SEEK_END);
     use IO::Handle;
+
+    our $script = pop @ARGV or die("Please pass in a script.\n");
 
     any '/run' => sub {
             my $self = shift;
@@ -57,7 +60,6 @@ From Proc::Background:
 
             my $tmp = File::Temp->new(UNLINK => 0, SUFFIX => '.txt');
             my $output = $self->stash->{_output} = $tmp->filename;
-            my $script = pop @ARGV;
             my $command = qq($^X $script $output);
 
             my $proc = Mojo::IOLoop::ProcBackground->new;
@@ -81,7 +83,7 @@ From Proc::Background:
                         $self->write_chunk(qq(<script>document.getElementById("stuff").innerHTML += "$buf<br>";</script>\n));
                     }
                 }
-            )};
+            });
 
             $proc->on(dead => sub {
                 my ($proc) = @_;
@@ -89,7 +91,7 @@ From Proc::Background:
                 $self->app->log->debug("Done");
                 $self->write_chunk("Done</body></html>");
                 $self->finish;
-            )};
+            });
 
             $proc->run($command);
     };
@@ -100,6 +102,10 @@ From Proc::Background:
     app->secrets(["I Knos# you!!"]);
     app->start;
 
+=head2 SEE ALSO
+
+    L<Mojo::IOLoop::ReadWriteFork> L<Mojo::IOLoop::ForkCall>
+
 =cut
 
 has recurring => undef;
@@ -107,11 +113,12 @@ has proc => undef;
 
 sub run {
     my $self = shift;
+    my $command = shift;
 
-    my $proc = Proc::Background->new(ref($self->command) ? @{ $self->command } : $self->command);
+    my $proc = Proc::Background->new(ref($command) ? @{ $command } : $command);
     $self->proc($proc);
 
-    my $recurring = Mojo::IOLoop->recurring(RECURRING_INTERVAL => sub {
+    my $recurring = Mojo::IOLoop->recurring(0.05 => sub {
         my $reactor = shift;
 
         if ($self->proc->alive) {
