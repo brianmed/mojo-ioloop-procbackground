@@ -4,7 +4,7 @@ Mojo::IOLoop::ProcBackground - IOLoop interface to Proc::Background
 
 =head1 VERSION
 
-0.01
+0.04
 
 =head1 DESCRIPTION
 
@@ -24,15 +24,13 @@ From Proc::Background:
     use Mojo::IOLoop::ProcBackground;
 
     use File::Temp;
+    use File::Spec;
     use Proc::Background;
-    use Fcntl qw(SEEK_SET SEEK_END);
-    use IO::Handle;
-
-    our $script = pop @ARGV or die("Please pass in a script.\n");
 
     any '/run' => sub {
             my $self = shift;
 
+            # Setup our request to take a while
             Mojo::IOLoop->stream($self->tx->connection)->timeout(30);
             $self->render_later;
 
@@ -40,50 +38,51 @@ From Proc::Background:
                 $self->app->log->debug("Finished");
             });
 
+            # We want the UserAgent to see something as soon as possible
             $self->res->code(200);
             $self->res->headers->content_type('text/html');
-            $self->write_chunk("<html><body><div id=stuff>Starting...<br></div>");
+            $self->write_chunk("<html><body>Starting...<br>\n");
 
-            my $tmp = File::Temp->new(UNLINK => 0, SUFFIX => '.txt');
-            my $output = $self->stash->{_output} = $tmp->filename;
-            my $command = qq($^X $script $output);
+            # This is our utility script that will run in the background
+            my $tmp = File::Temp->new(UNLINK => 0, SUFFIX => '.pl');
+            my $statefile = $self->stash->{_statefile} = File::Spec->catfile(File::Spec->tmpdir, "done");
+            print($tmp 'sleep(10); $f="$ARGV[0].$$"; open($fh, ">", $f); sleep(3)');
+            my $script = $tmp->filename;
+            undef($tmp);
 
+            # Thanks CPAN.. :)  The magic happens in Proc::Background
             my $proc = $self->stash->{_proc} = Mojo::IOLoop::ProcBackground->new;
 
+            # Every so often we get a heartbeat from the background process
             $proc->on(alive => sub {
                 my ($proc) = @_;
 
-                my $told = $self->stash->{_told} // 0;
-                my $output = $self->stash->{_output};
+                my $pid = $proc->proc->pid;
+                my $statefile = $self->stash->{_statefile} . ".$pid";
 
-                open(my $fh, "<", $output);
-                if (fileno($fh)) {
-                    seek($fh, 0, SEEK_END);
-                    my $end = tell($fh);
-
-                    if ($told != $end) {
-                        seek($fh, $told, SEEK_SET);
-                        read($fh, my $buf, 1024);
-                        $self->stash->{_told} = tell($fh);
-                        chomp($buf);
-                        $self->write_chunk(qq(<script>document.getElementById("stuff").innerHTML += "$buf<br>";</script>\n));
-                    }
+                if (-f $statefile) {
+                    $self->write_chunk("Done</body></html>");
+                    $proc->unsubscribe("alive");
                 }
             });
 
+            # When the process terminates, we get this event
             $proc->on(dead => sub {
                 my ($proc) = @_;
 
-                $self->app->log->debug("Done");
-                $self->write_chunk("Done</body></html>");
+                my $pid = $proc->proc->pid;
+                my $statefile = $self->stash->{_statefile} . ".$pid";
+
+                $self->app->log->debug("Done: $statefile");
                 $self->finish;
             });
 
-            $proc->run($command);
+            # Start our process
+            $proc->run([$^X, $script, $statefile]);
     };
 
+    # Run the app
     push(@ARGV, 'daemon', '-l', 'http://*:5555') unless @ARGV;
-
     app->log->level("debug");
     app->secrets(["I Knos# you!!"]);
     app->start;
