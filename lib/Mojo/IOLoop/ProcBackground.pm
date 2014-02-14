@@ -139,3 +139,5 @@ sub run {
     $self->proc; # build proc
     $self->recurring; # start watching it
 }
+
+1;
