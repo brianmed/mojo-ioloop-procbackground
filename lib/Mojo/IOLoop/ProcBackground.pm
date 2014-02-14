@@ -113,6 +113,8 @@ From Proc::Background:
 
 =cut
 
+# Thanks jberger.. :)
+
 has 'command';
 
 has proc => sub {
