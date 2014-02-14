@@ -10,7 +10,7 @@ use Proc::Background;
 
 use constant DEBUG => $ENV{MOJO_PROCBACKGROUND_DEBUG} || 0;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 NAME
 
@@ -62,7 +62,7 @@ From Proc::Background:
             my $output = $self->stash->{_output} = $tmp->filename;
             my $command = qq($^X $script $output);
 
-            my $proc = Mojo::IOLoop::ProcBackground->new;
+            my $proc = $self->stash->{_proc} = Mojo::IOLoop::ProcBackground->new;
 
             $proc->on(alive => sub {
                 my ($proc) = @_;

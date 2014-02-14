@@ -48,7 +48,7 @@ From Proc::Background:
             my $output = $self->stash->{_output} = $tmp->filename;
             my $command = qq($^X $script $output);
 
-            my $proc = Mojo::IOLoop::ProcBackground->new;
+            my $proc = $self->stash->{_proc} = Mojo::IOLoop::ProcBackground->new;
 
             $proc->on(alive => sub {
                 my ($proc) = @_;
