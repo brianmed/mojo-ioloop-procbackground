@@ -90,12 +90,12 @@ From Proc::Background:
 
 =head2 SEE ALSO
 
-    =over
+=over
 
-    =item L<Mojo::IOLoop::ReadWriteFork>
-    
-    =item L<Mojo::IOLoop::ForkCall>
+=item L<Mojo::IOLoop::ReadWriteFork>
 
-    =back
+=item L<Mojo::IOLoop::ForkCall>
+
+=back
 
 =cut
