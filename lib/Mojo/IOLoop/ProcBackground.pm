@@ -104,7 +104,13 @@ From Proc::Background:
 
 =head2 SEE ALSO
 
-    L<Mojo::IOLoop::ReadWriteFork> L<Mojo::IOLoop::ForkCall>
+=over
+
+=item L<Mojo::IOLoop::ReadWriteFork>
+
+=item L<Mojo::IOLoop::ForkCall>
+
+=back
 
 =cut
 
