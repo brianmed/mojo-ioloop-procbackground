@@ -10,7 +10,7 @@ use Proc::Background;
 
 use constant DEBUG => $ENV{MOJO_PROCBACKGROUND_DEBUG} || 0;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 NAME
 
@@ -18,7 +18,7 @@ Mojo::IOLoop::ProcBackground - IOLoop interface to Proc::Background
 
 =head1 VERSION
 
-0.04
+0.05
 
 =head1 DESCRIPTION
 
@@ -126,11 +126,11 @@ has recurring => sub {
     my $self = shift;
     Mojo::IOLoop->recurring(0.05 => sub {
         if ($self->proc->alive) {
-            $self->emit_safe("alive");
+            $self->emit("alive");
         }
         else {
             Mojo::IOLoop->remove($self->recurring);
-            $self->emit_safe("dead");
+            $self->emit("dead");
         }
     });
 };
